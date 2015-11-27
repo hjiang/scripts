@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Name: Check for domain name availability
-# linuxconfig.org
-# Please copy, share, redistribute and improve
+# Adopted from http://linuxconfig.org/check-domain-name-availability-with-bash-and-whois
+# Feel free to fork and improve.
 
 if [ "$#" == "0" ]; then
     echo "You need tu supply at least one argument!"
