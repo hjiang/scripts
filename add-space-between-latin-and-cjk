@@ -13,19 +13,19 @@ import sys
 import functools
 
 def is_latin(c):
-	return ord(c) < 256
+    return ord(c) < 256
 
 def add_space_at_boundry(prefix, next_char):
-	if len(prefix) == 0:
-		return next_char
-	if is_latin(prefix[-1]) != is_latin(next_char):
-		return prefix + ' ' + next_char
-	else:
-		return prefix + next_char 
+    if len(prefix) == 0:
+        return next_char
+    if is_latin(prefix[-1]) != is_latin(next_char):
+        return prefix + ' ' + next_char
+    else:
+        return prefix + next_char
 
 if len(sys.argv) < 2:
-	print('A minimum of one argument is required!\n')
-	exit()
+    print('A minimum of one argument is required!\n')
+    exit()
 
 infile = open(sys.argv[1], 'r')
 instr = infile.read()
@@ -33,4 +33,4 @@ infile.close()
 
 outstr = functools.reduce(add_space_at_boundry, instr, '')
 with open(sys.argv[2 if len(sys.argv) > 2 else 1], 'w') as outfile:
-	outfile.write(outstr)
+    outfile.write(outstr)
