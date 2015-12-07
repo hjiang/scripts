@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+
+# Add space between CJK and Latin characters according to
+# https://open.leancloud.cn/copywriting-style-guide.html
+#
+# SYNOPSIS
+#   add-space-between-latin-and-cjk input_file [out_file]
+#
+# CAUTION
+#   If output_file is not provided, input_file is changed in-place.
+
 import sys
 import functools
 
