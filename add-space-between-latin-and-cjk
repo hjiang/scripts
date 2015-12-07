@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 # Add space between CJK and Latin characters according to
-# https://open.leancloud.cn/copywriting-style-guide.html
+# https://open.leancloud.cn/copywriting-style-guide.html. Mainly used for
+# cleanning up Markdown documents.
 #
 # SYNOPSIS
 #   add-space-between-latin-and-cjk input_file [out_file]
@@ -15,11 +16,15 @@ import functools
 def is_latin(c):
     return ord(c) < 256
 
+# Some characters should not have space on either side.
+def allow_space(c):
+    return not c.isspace() and not (c in '，。；「」：《》『』、[]*_')
+
 def add_space_at_boundry(prefix, next_char):
     if len(prefix) == 0:
         return next_char
-    if is_latin(prefix[-1]) != is_latin(next_char) and not \
-            next_char.isspace() and not prefix[-1].isspace():
+    if is_latin(prefix[-1]) != is_latin(next_char) and \
+            allow_space(next_char) and allow_space(prefix[-1]):
         return prefix + ' ' + next_char
     else:
         return prefix + next_char
