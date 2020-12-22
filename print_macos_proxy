@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+
+parser = argparse.ArgumentParser(description='Print macOS proxy settings.')
+parser.add_argument('type', default='http', nargs='?',
+                    choices=['http', 'https', 'socks'], help='proxy type')
+
+args = parser.parse_args()
+
+result = subprocess.run(['scutil', '--proxy'], stdout=subprocess.PIPE)
+lines = result.stdout.decode('utf-8').splitlines()
+
+addrkey = args.type.upper() + 'Proxy'
+portkey = args.type.upper() + 'Port'
+
+addr = ''
+port = ''
+
+for line in lines:
+    if addrkey in line:
+        addr = line.split()[-1]
+    if portkey in line:
+        port = line.split()[-1]
+
+if addr != '' and port != '':
+    print(addr + ':' + port)

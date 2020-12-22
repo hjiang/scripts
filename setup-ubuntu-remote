@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -e
+
+if ! [ -x "$(command -v zsh)" ]; then
+  sudo apt-get install zsh
+fi
+
+if ! [ -x "$(command -v git)" ]; then
+  sudo apt-get install git
+fi
+
+if ! [ -x "$(command -v curl)" ]; then
+  sudo apt-get install curl
+fi
+
+if ! [ -x "$(command -v ruby)" ]; then
+  sudo apt-get install ruby
+fi
+
+if ! [ -d "$HOME/.git" ]; then
+  git clone git@bitbucket.org:lazyseq/homedir.git
+  mv homedir/.git .
+  rm -rf homedir
+  git checkout -f
+fi
+
+if [ ! -d "$HOME/.linuxbrew" ] && [ ! -d "/home/linuxbrew/.linuxbrew" ]; then
+  sh -c "$(wget https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh -O -)"
+fi
+
+if ! [ -d "$HOME/.oh-my-zsh" ]; then
+  sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -)"
+fi
+
+git clone https://github.com/k-takata/minpac.git \
+    ~/.vim/pack/minpac/opt/minpac

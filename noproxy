@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+old_http_proxy=$http_proxy
+old_https_proxy=$https_proxy
+old_all_proxy=$all_proxy
+
+export http_proxy=
+export https_proxy=
+export all_proxy=
+
+$@
+
+export http_proxy=$old_http_proxy
+export https_proxy=$old_https_proxy
+export all_proxy=$old_all_proxy
