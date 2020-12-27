@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+import subprocess
+
+proxy_types = ['http', 'https', 'socks']
+proxy_vars = {'http': 'http_proxy',
+              'https': 'https_proxy', 'socks': 'all_proxy'}
+proxy_protocols = {'http': 'http', 'https': 'http', 'socks': 'socks'}
+
+result = subprocess.run(['scutil', '--proxy'], stdout=subprocess.PIPE)
+lines = result.stdout.decode('utf-8').splitlines()
+
+for proxy_type in proxy_types:
+    addrkey = proxy_type.upper() + 'Proxy'
+    portkey = proxy_type.upper() + 'Port'
+
+    addr = ''
+    port = ''
+
+    for line in lines:
+        if addrkey in line:
+            addr = line.split()[-1]
+        if portkey in line:
+            port = line.split()[-1]
+
+    if addr != '' and port != '':
+        print('set -xg %s "%s://%s:%s";' % (proxy_vars[proxy_type],
+                                            proxy_protocols[proxy_type],
+                                            addr,
+                                            port))
