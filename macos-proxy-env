@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import subprocess
 
 proxy_types = ['http', 'https', 'socks']
@@ -24,7 +25,14 @@ for proxy_type in proxy_types:
             port = line.split()[-1]
 
     if addr != '' and port != '':
-        print('set -xg %s "%s://%s:%s";' % (proxy_vars[proxy_type],
-                                            proxy_protocols[proxy_type],
-                                            addr,
-                                            port))
+        shell = os.environ['SHELL']
+        if shell.endswith('fish'):
+            print('set -xg %s "%s://%s:%s"' % (proxy_vars[proxy_type],
+                                                proxy_protocols[proxy_type],
+                                                addr,
+                                                port))
+        else:
+            print('export %s="%s://%s:%s"' % (proxy_vars[proxy_type],
+                                                proxy_protocols[proxy_type],
+                                                addr,
+                                                port))
