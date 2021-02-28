@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+restic.sh backup --cleanup-cache --tag keep $HOME/Pictures/*.photoslibrary
