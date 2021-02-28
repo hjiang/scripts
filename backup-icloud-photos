@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-restic.sh backup --cleanup-cache --tag keep $HOME/Pictures/*.photoslibrary
+restic.sh backup --cleanup-cache --tag keep "$HOME/Pictures/*.photoslibrary"
