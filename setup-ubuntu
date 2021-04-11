@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -e
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
-scp $DIR/setup-ubuntu-remote $1:/tmp/
-echo 'running script on remote machine'
-ssh -t -A $1 /tmp/setup-ubuntu-remote
