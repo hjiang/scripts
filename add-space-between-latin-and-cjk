@@ -18,7 +18,7 @@ def is_latin(c):
 
 # Some characters should not have space on either side.
 def allow_space(c):
-    return not c.isspace() and not (c in '。？！，、；：「」《》『』[]()（）*_#"')
+    return not c.isspace() and not (c in '。？！，、；：「」《》『』<>[]()（）*_#"')
 
 def add_space_at_boundry(prefix, next_char):
     if len(prefix) == 0:
