@@ -5,8 +5,11 @@ import subprocess
 
 proxy_types = ['http', 'https', 'socks']
 proxy_vars = {'http': 'http_proxy',
-              'https': 'https_proxy', 'socks': 'all_proxy'}
-proxy_protocols = {'http': 'http', 'https': 'http', 'socks': 'socks'}
+              'https': 'https_proxy',
+              'socks': 'all_proxy'}
+proxy_protocols = {'http': 'http',
+                   'https': 'http',
+                   'socks': 'socks5'}
 
 result = subprocess.run(['scutil', '--proxy'], stdout=subprocess.PIPE)
 lines = result.stdout.decode('utf-8').splitlines()
