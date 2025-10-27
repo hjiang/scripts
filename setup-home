@@ -188,7 +188,7 @@ setup_emacs_d() {
         fi
 
         info "Cloning emacs.d repository..."
-        git clone https://github.com/hjiang/emacs.d "$emacs_d"
+	      git clone git@github.com:hjiang/emacs.d "$emacs_d"
         info "emacs.d cloned successfully"
     fi
 }
