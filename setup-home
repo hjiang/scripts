@@ -169,18 +169,9 @@ install_emacs() {
             brew tap d12frosted/emacs-plus
         fi
 
-        info "Installing emacs-plus with modern-sexy-v2 icon..."
-        brew install emacs-plus --with-native-comp --with-icon=modern-sexy-v2
+        info "Installing emacs-plus with modern-sexy-v2-icon and imagemagick..."
+        brew install emacs-plus --with-modern-sexy-v2-icon --with-imagemagick
         info "emacs-plus installed successfully"
-    fi
-
-    # Install imagemagick separately
-    if brew list imagemagick >/dev/null 2>&1; then
-        info "imagemagick is already installed"
-    else
-        info "Installing imagemagick..."
-        brew install imagemagick
-        info "imagemagick installed successfully"
     fi
 }
 
