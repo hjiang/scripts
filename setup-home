@@ -19,6 +19,20 @@ error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+confirm() {
+    local prompt="$1"
+    local response
+    read -p "$prompt [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # Check if Homebrew is installed, if not install it
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -63,26 +77,25 @@ setup_dotconfig() {
         # Move .git directory
         mv "$temp_dir/.git" "$config_dir/"
 
-        # Copy files from temp, preserving existing files
+        # Copy files from temp directory
         # Files from git repo will overwrite existing ones
-        if [[ "$(uname)" == "Darwin" ]]; then
-            # macOS uses different cp flags
-            cp -R "$temp_dir/"* "$config_dir/" 2>/dev/null || true
-            cp -R "$temp_dir/".??* "$config_dir/" 2>/dev/null || true
-        else
-            # Linux
-            cp -Rn "$temp_dir/"* "$config_dir/" 2>/dev/null || true
-            cp -Rn "$temp_dir/".??* "$config_dir/" 2>/dev/null || true
-        fi
+        cp -R "$temp_dir/"* "$config_dir/" 2>/dev/null || true
+        cp -R "$temp_dir/".??* "$config_dir/" 2>/dev/null || true
 
         # Remove temp directory
         rm -rf "$temp_dir"
 
         # Reset the repo to ensure all tracked files are correct
         cd "$config_dir"
-        git reset --hard HEAD
-
-        info "dotconfig setup complete"
+        warn "About to run 'git reset --hard HEAD' in ~/.config"
+        warn "This will overwrite any local modifications to tracked files"
+        if confirm "Do you want to proceed?"; then
+            git reset --hard HEAD
+            info "dotconfig setup complete"
+        else
+            error "Setup cancelled by user"
+            return 1
+        fi
     fi
 }
 
@@ -156,9 +169,18 @@ install_emacs() {
             brew tap d12frosted/emacs-plus
         fi
 
-        info "Installing emacs-plus with modern-sexy-v2-icon and imagemagick..."
-        brew install emacs-plus --with-modern-sexy-v2-icon --with-imagemagick
+        info "Installing emacs-plus with modern-sexy-v2 icon..."
+        brew install emacs-plus --with-native-comp --with-icon=modern-sexy-v2
         info "emacs-plus installed successfully"
+    fi
+
+    # Install imagemagick separately
+    if brew list imagemagick >/dev/null 2>&1; then
+        info "imagemagick is already installed"
+    else
+        info "Installing imagemagick..."
+        brew install imagemagick
+        info "imagemagick installed successfully"
     fi
 }
 
