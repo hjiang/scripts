@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+confirm() {
+    local prompt="$1"
+    local response
+    read -p "$prompt [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if Homebrew is installed, if not install it
+install_homebrew() {
+    if command -v brew >/dev/null 2>&1; then
+        info "Homebrew is already installed"
+    else
+        info "Installing Homebrew..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+        # Add Homebrew to PATH for the current session
+        if [[ "$(uname)" == "Darwin" ]]; then
+            if [[ "$(uname -m)" == "arm64" ]]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            else
+                eval "$(/usr/local/bin/brew shellenv)"
+            fi
+        elif [[ "$(uname)" == "Linux" ]]; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
+
+        info "Homebrew installed successfully"
+    fi
+}
+
+# Clone dotconfig repo into ~/.config if not already a git repo
+setup_dotconfig() {
+    local config_dir="$HOME/.config"
+
+    if [[ -d "$config_dir/.git" ]]; then
+        info "~/.config is already a git repository"
+    else
+        info "Setting up dotconfig..."
+
+        # Create a temporary directory for cloning
+        local temp_dir=$(mktemp -d)
+
+        # Clone the repo to temp directory
+        git clone https://github.com/hjiang/dotconfig "$temp_dir"
+
+        # Create ~/.config if it doesn't exist
+        mkdir -p "$config_dir"
+
+        # Move .git directory
+        mv "$temp_dir/.git" "$config_dir/"
+
+        # Copy files from temp directory
+        # Files from git repo will overwrite existing ones
+        cp -R "$temp_dir/"* "$config_dir/" 2>/dev/null || true
+        cp -R "$temp_dir/".??* "$config_dir/" 2>/dev/null || true
+
+        # Remove temp directory
+        rm -rf "$temp_dir"
+
+        # Reset the repo to ensure all tracked files are correct
+        cd "$config_dir"
+        warn "About to run 'git reset --hard HEAD' in ~/.config"
+        warn "This will overwrite any local modifications to tracked files"
+        if confirm "Do you want to proceed?"; then
+            git reset --hard HEAD
+            info "dotconfig setup complete"
+        else
+            error "Setup cancelled by user"
+            return 1
+        fi
+    fi
+}
+
+# Symlink ~/.zshrc to ~/.config/zsh/config.zsh
+setup_zshrc() {
+    local zshrc="$HOME/.zshrc"
+    local target="$HOME/.config/zsh/config.zsh"
+
+    if [[ -L "$zshrc" ]]; then
+        local current_target=$(readlink "$zshrc")
+        if [[ "$current_target" == "$target" ]]; then
+            info "~/.zshrc is already symlinked correctly"
+            return
+        else
+            warn "~/.zshrc is symlinked to $current_target, updating..."
+            rm "$zshrc"
+        fi
+    elif [[ -f "$zshrc" ]]; then
+        warn "~/.zshrc exists as a regular file, backing up to ~/.zshrc.backup..."
+        mv "$zshrc" "$zshrc.backup"
+    fi
+
+    if [[ ! -f "$target" ]]; then
+        error "Target file $target does not exist"
+        return 1
+    fi
+
+    ln -s "$target" "$zshrc"
+    info "Symlinked ~/.zshrc to $target"
+}
+
+# Install zsh and set as default shell
+setup_zsh() {
+    # Install zsh if not already installed via Homebrew
+    if brew list zsh >/dev/null 2>&1; then
+        info "zsh is already installed via Homebrew"
+    else
+        info "Installing zsh via Homebrew..."
+        brew install zsh
+    fi
+
+    # Get the path to Homebrew's zsh
+    local brew_zsh=$(brew --prefix)/bin/zsh
+
+    # Check if it's already the default shell
+    if [[ "$SHELL" == "$brew_zsh" ]]; then
+        info "zsh is already the default shell"
+    else
+        # Add to /etc/shells if not already there
+        if ! grep -q "$brew_zsh" /etc/shells 2>/dev/null; then
+            info "Adding $brew_zsh to /etc/shells (requires sudo)..."
+            echo "$brew_zsh" | sudo tee -a /etc/shells >/dev/null
+        fi
+
+        # Change default shell
+        info "Changing default shell to zsh (requires sudo)..."
+        sudo chsh -s "$brew_zsh" "$USER"
+        info "Default shell changed to zsh"
+    fi
+}
+
+# Install emacs-plus with options
+install_emacs() {
+    # Check if emacs-plus is already installed
+    if brew list emacs-plus >/dev/null 2>&1; then
+        info "emacs-plus is already installed"
+    else
+        # First, tap the emacs-plus repository
+        if ! brew tap | grep -q "d12frosted/emacs-plus"; then
+            info "Tapping d12frosted/emacs-plus..."
+            brew tap d12frosted/emacs-plus
+        fi
+
+        info "Installing emacs-plus with modern-sexy-v2-icon and imagemagick..."
+        brew install emacs-plus --with-modern-sexy-v2-icon --with-imagemagick
+        info "emacs-plus installed successfully"
+    fi
+}
+
+# Clone emacs.d repository
+setup_emacs_d() {
+    local emacs_d="$HOME/.emacs.d"
+
+    if [[ -d "$emacs_d/.git" ]]; then
+        info "~/.emacs.d is already a git repository"
+    else
+        if [[ -d "$emacs_d" ]]; then
+            warn "~/.emacs.d exists but is not a git repo, backing up to ~/.emacs.d.backup..."
+            mv "$emacs_d" "$emacs_d.backup"
+        fi
+
+        info "Cloning emacs.d repository..."
+        git clone https://github.com/hjiang/emacs.d "$emacs_d"
+        info "emacs.d cloned successfully"
+    fi
+}
+
+# Main execution
+main() {
+    info "Starting home setup..."
+    echo ""
+
+    install_homebrew
+    echo ""
+
+    setup_dotconfig
+    echo ""
+
+    setup_zshrc
+    echo ""
+
+    setup_zsh
+    echo ""
+
+    install_emacs
+    echo ""
+
+    setup_emacs_d
+    echo ""
+
+    info "Home setup complete!"
+    info "Note: You may need to restart your terminal for all changes to take effect."
+}
+
+main "$@"
