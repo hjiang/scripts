@@ -1,0 +1,4 @@
+[emacs] git clone --depth 1 --branch emacs-30 git@github.com:emacs-mirror/emacs.git emacs-30-src
+[emacs] ./configure --prefix=/usr/local/stow/emacs --with-pgtk --with-native-compilation=aot   --with-json --with-tree-sitter --with-cairo   --with-modules --with-harfbuzz --with-imagemagick   --with-sqlite3 --with-webp
+[emacs] sudo apt install libgccjit-13-dev
+brew install --cask font-fira-code-nerd-font
