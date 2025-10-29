@@ -198,7 +198,7 @@ main() {
     info "Starting home setup..."
     echo ""
 
-    install_homebrew
+#    install_homebrew
     echo ""
 
     setup_dotconfig
@@ -210,7 +210,7 @@ main() {
     setup_zsh
     echo ""
 
-    install_emacs
+#    install_emacs
     echo ""
 
     setup_emacs_d
