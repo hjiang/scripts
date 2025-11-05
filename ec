@@ -2,6 +2,7 @@
 
 if [ -n "$SUDO_COMMAND" ]; then
   vim "$@"
+  exit $?
 fi
 
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
