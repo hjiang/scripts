@@ -24,9 +24,9 @@ fi
 
 # Validate USE flags format (alphanumeric, underscore, hyphen, plus; may start with -)
 for flag in "${USE_FLAGS[@]}"; do
-    if [[ ! "$flag" =~ ^-?[a-z0-9_+-]+$ ]]; then
+    if [[ ! "$flag" =~ ^-?[A-Za-z0-9_+-]+$ ]]; then
         echo "Error: Invalid USE flag format: $flag" >&2
-        echo "USE flags should contain only lowercase letters, numbers, underscore, hyphen, and plus" >&2
+        echo "USE flags should contain only letters, numbers, underscore, hyphen, and plus" >&2
         echo "Prefix with - to disable: -flag" >&2
         exit 1
     fi
