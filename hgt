@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Hong's Gentoo Tools - manage package.use and package.accept_keywords."""
+
+import argparse
+import os
+import platform
+import re
+import socket
+import subprocess
+import sys
+from pathlib import Path
+
+USE_DIR = Path("/etc/portage/package.use")
+KEYWORDS_DIR = Path("/etc/portage/package.accept_keywords")
+
+PACKAGE_PATTERN = re.compile(r"^[a-z0-9_-]+/[a-z0-9_+-]+$")
+USE_FLAG_PATTERN = re.compile(r"^-?[a-z0-9_+-]+$")
+
+ARCH_MAP = {
+    "x86_64": "~amd64",
+    "aarch64": "~arm64",
+    "armv7l": "~arm",
+    "i686": "~x86",
+    "ppc64": "~ppc64",
+}
+
+
+def validate_package(pkg: str) -> bool:
+    return bool(PACKAGE_PATTERN.match(pkg))
+
+
+def validate_use_flag(flag: str) -> bool:
+    return bool(USE_FLAG_PATTERN.match(flag))
+
+
+def get_arch_keyword() -> str:
+    arch = platform.machine()
+    if arch not in ARCH_MAP:
+        sys.exit(f"Error: Unsupported architecture: {arch}")
+    return ARCH_MAP[arch]
+
+
+def get_target_file(base_dir: Path, host: bool) -> Path:
+    if host:
+        hostname = socket.gethostname().split(".")[0]
+        return base_dir / f"60-host-{hostname}"
+    else:
+        user = os.environ.get("USER", "unknown")
+        return base_dir / f"50-user-{user}"
+
+
+def read_entries(path: Path) -> dict[str, str]:
+    """Read file and return {package: rest_of_line} dict."""
+    entries = {}
+    if path.exists():
+        try:
+            content = path.read_text()
+        except PermissionError:
+            content = subprocess.run(
+                ["sudo", "cat", str(path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(None, 1)
+            if len(parts) >= 1:
+                pkg = parts[0]
+                rest = parts[1] if len(parts) > 1 else ""
+                entries[pkg] = rest
+    return entries
+
+
+def merge_use_flags(existing: str, new_flags: list[str]) -> str:
+    """Merge USE flags intelligently."""
+    flag_set: dict[str, bool] = {}  # base_flag -> enabled
+
+    # Parse existing flags
+    for flag in existing.split():
+        if flag.startswith("-"):
+            flag_set[flag[1:]] = False
+        else:
+            flag_set[flag] = True
+
+    # Apply new flags
+    for flag in new_flags:
+        if flag.startswith("-"):
+            flag_set[flag[1:]] = False
+        else:
+            flag_set[flag] = True
+
+    # Build result: enabled flags first (sorted), then disabled (sorted)
+    enabled = sorted(f for f, v in flag_set.items() if v)
+    disabled = sorted(f"-{f}" for f, v in flag_set.items() if not v)
+    return " ".join(enabled + disabled)
+
+
+def write_entries(path: Path, entries: dict[str, str], stdout: bool) -> None:
+    """Write entries to file (sorted by package name) or print to stdout."""
+    lines = []
+    for pkg in sorted(entries.keys()):
+        rest = entries[pkg]
+        if rest:
+            lines.append(f"{pkg} {rest}")
+        else:
+            lines.append(pkg)
+    content = "\n".join(lines) + "\n" if lines else ""
+
+    if stdout:
+        print(content, end="")
+    else:
+        # Write using sudo tee
+        proc = subprocess.run(
+            ["sudo", "tee", str(path)],
+            input=content,
+            text=True,
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            sys.exit(f"Error writing to {path}: {proc.stderr}")
+        print(f"Written to: {path}")
+
+
+def cmd_unmask(args) -> None:
+    pkg = args.package
+    if not validate_package(pkg):
+        sys.exit(f"Error: Invalid package format '{pkg}'. Expected: category/package")
+
+    keyword = get_arch_keyword()
+    target = get_target_file(KEYWORDS_DIR, args.host)
+
+    entries = read_entries(target)
+    old_value = entries.get(pkg)
+
+    if old_value == keyword:
+        print(f"Already unmasked: {pkg} {keyword}")
+        return
+
+    entries[pkg] = keyword
+    write_entries(target, entries, args.stdout)
+
+    if not args.stdout:
+        print(f"Unmasked: {pkg} {keyword}")
+
+
+def cmd_use(args) -> None:
+    pkg = args.package
+    flags = args.flags
+
+    if not validate_package(pkg):
+        sys.exit(f"Error: Invalid package format '{pkg}'. Expected: category/package")
+
+    if not flags:
+        sys.exit("Error: At least one USE flag is required")
+
+    for flag in flags:
+        if not validate_use_flag(flag):
+            sys.exit(f"Error: Invalid USE flag format '{flag}'")
+
+    target = get_target_file(USE_DIR, args.host)
+
+    entries = read_entries(target)
+    existing = entries.get(pkg, "")
+    merged = merge_use_flags(existing, flags)
+
+    if existing == merged:
+        print(f"USE flags unchanged: {pkg} {merged}")
+        return
+
+    entries[pkg] = merged
+    write_entries(target, entries, args.stdout)
+
+    if not args.stdout:
+        print(f"USE flags set: {pkg} {merged}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="hgt",
+        description="Hong's Gentoo Tools - manage portage configuration",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # unmask subcommand
+    unmask_parser = subparsers.add_parser(
+        "unmask", help="Add package to package.accept_keywords"
+    )
+    unmask_parser.add_argument("package", help="Package name (category/package)")
+    unmask_parser.add_argument(
+        "--host", action="store_true", help="Write to host-specific file"
+    )
+    unmask_parser.add_argument(
+        "--stdout", action="store_true", help="Print to stdout instead of writing"
+    )
+    unmask_parser.set_defaults(func=cmd_unmask)
+
+    # use subcommand
+    use_parser = subparsers.add_parser("use", help="Set USE flags for a package")
+    use_parser.add_argument("package", help="Package name (category/package)")
+    use_parser.add_argument(
+        "flags", nargs=argparse.REMAINDER, help="USE flags (prefix with - to disable)"
+    )
+    use_parser.add_argument(
+        "--host", action="store_true", help="Write to host-specific file"
+    )
+    use_parser.add_argument(
+        "--stdout", action="store_true", help="Print to stdout instead of writing"
+    )
+    use_parser.set_defaults(func=cmd_use)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
